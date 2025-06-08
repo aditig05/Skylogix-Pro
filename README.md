@@ -47,7 +47,10 @@ Run the CLI application:
 ```bash
 python -m skylogix.cli
 ```
-
+Run the UI Application: 
+```bash
+python -m skylogix.ui.app
+```
 ## Available CLI Commands
 
 - `python -m skylogix.cli setup` — Initialize the database
