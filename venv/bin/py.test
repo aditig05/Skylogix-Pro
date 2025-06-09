@@ -1,5 +1,5 @@
 #!/bin/sh
-'''exec' "/home/adi/Desktop/CS Projects/airline/venv/bin/python3" "$0" "$@"
+'''exec' "/home/adi/Desktop/CS Projects/airline-done/Skylogix-Pro/venv/bin/python3" "$0" "$@"
 ' '''
 # -*- coding: utf-8 -*-
 import re

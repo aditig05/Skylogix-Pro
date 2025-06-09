@@ -2,6 +2,10 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from ..models.base import SessionLocal
 from ..models.models import Airport, Employee, Flight, Passenger, Booking, Meal, Service
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import pandas as pd
+from datetime import datetime
 
 class SkyLogixUI:
     def __init__(self, root):
@@ -23,6 +27,7 @@ class SkyLogixUI:
         self.create_booking_tab(notebook)
         self.create_meal_tab(notebook)
         self.create_service_tab(notebook)
+        self.create_analytics_tab(notebook)
 
     def create_airport_tab(self, notebook):
         airport_frame = ttk.Frame(notebook)
@@ -415,6 +420,149 @@ class SkyLogixUI:
             db.close()
 
         ttk.Button(service_frame, text="Refresh List", command=list_services).grid(row=7, column=0, columnspan=2, pady=10)
+
+    def create_analytics_tab(self, notebook):
+        analytics_frame = ttk.Frame(notebook)
+        notebook.add(analytics_frame, text="Analytics")
+
+        # Create a frame for the plots
+        plots_frame = ttk.Frame(analytics_frame)
+        plots_frame.pack(fill='both', expand=True, padx=10, pady=10)
+
+        # Create buttons for different analytics
+        ttk.Button(analytics_frame, text="Flight Distribution by Route", 
+                  command=lambda: self.show_flight_distribution(plots_frame)).pack(pady=5)
+        ttk.Button(analytics_frame, text="Booking Trends", 
+                  command=lambda: self.show_booking_trends(plots_frame)).pack(pady=5)
+        ttk.Button(analytics_frame, text="Revenue by Route", 
+                  command=lambda: self.show_revenue_by_route(plots_frame)).pack(pady=5)
+        ttk.Button(analytics_frame, text="Employee Distribution", 
+                  command=lambda: self.show_employee_distribution(plots_frame)).pack(pady=5)
+
+    def show_flight_distribution(self, parent):
+        # Clear previous plot
+        for widget in parent.winfo_children():
+            widget.destroy()
+
+        db = SessionLocal()
+        flights = db.query(Flight).all()
+        
+        # Create route counts
+        routes = {}
+        for flight in flights:
+            dep = db.query(Airport).filter(Airport.id == flight.departure_airport_id).first()
+            arr = db.query(Airport).filter(Airport.id == flight.arrival_airport_id).first()
+            route = f"{dep.code}-{arr.code}"
+            routes[route] = routes.get(route, 0) + 1
+
+        # Create plot
+        fig, ax = plt.subplots(figsize=(10, 6))
+        routes_list = list(routes.keys())
+        counts = list(routes.values())
+        
+        ax.bar(routes_list, counts)
+        ax.set_title("Flight Distribution by Route")
+        ax.set_xlabel("Route")
+        ax.set_ylabel("Number of Flights")
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+
+        # Embed plot in tkinter
+        canvas = FigureCanvasTkAgg(fig, parent)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill='both', expand=True)
+        db.close()
+
+    def show_booking_trends(self, parent):
+        # Clear previous plot
+        for widget in parent.winfo_children():
+            widget.destroy()
+
+        db = SessionLocal()
+        bookings = db.query(Booking).all()
+        
+        # Create booking dates
+        dates = [booking.booking_date for booking in bookings]
+        date_counts = pd.Series(dates).value_counts().sort_index()
+
+        # Create plot
+        fig, ax = plt.subplots(figsize=(10, 6))
+        date_counts.plot(kind='line', marker='o', ax=ax)
+        ax.set_title("Booking Trends Over Time")
+        ax.set_xlabel("Date")
+        ax.set_ylabel("Number of Bookings")
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+
+        # Embed plot in tkinter
+        canvas = FigureCanvasTkAgg(fig, parent)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill='both', expand=True)
+        db.close()
+
+    def show_revenue_by_route(self, parent):
+        # Clear previous plot
+        for widget in parent.winfo_children():
+            widget.destroy()
+
+        db = SessionLocal()
+        flights = db.query(Flight).all()
+        
+        # Calculate revenue by route
+        route_revenue = {}
+        for flight in flights:
+            dep = db.query(Airport).filter(Airport.id == flight.departure_airport_id).first()
+            arr = db.query(Airport).filter(Airport.id == flight.arrival_airport_id).first()
+            route = f"{dep.code}-{arr.code}"
+            bookings = db.query(Booking).filter(Booking.flight_id == flight.id).all()
+            revenue = sum(booking.total_price for booking in bookings)
+            route_revenue[route] = route_revenue.get(route, 0) + revenue
+
+        # Create plot
+        fig, ax = plt.subplots(figsize=(10, 6))
+        routes = list(route_revenue.keys())
+        revenue = list(route_revenue.values())
+        
+        ax.bar(routes, revenue)
+        ax.set_title("Revenue by Route")
+        ax.set_xlabel("Route")
+        ax.set_ylabel("Revenue")
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+
+        # Embed plot in tkinter
+        canvas = FigureCanvasTkAgg(fig, parent)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill='both', expand=True)
+        db.close()
+
+    def show_employee_distribution(self, parent):
+        # Clear previous plot
+        for widget in parent.winfo_children():
+            widget.destroy()
+
+        db = SessionLocal()
+        employees = db.query(Employee).all()
+        
+        # Count employees by role
+        roles = {}
+        for employee in employees:
+            roles[employee.role] = roles.get(employee.role, 0) + 1
+
+        # Create plot
+        fig, ax = plt.subplots(figsize=(10, 6))
+        role_list = list(roles.keys())
+        counts = list(roles.values())
+        
+        ax.pie(counts, labels=role_list, autopct='%1.1f%%')
+        ax.set_title("Employee Distribution by Role")
+        plt.tight_layout()
+
+        # Embed plot in tkinter
+        canvas = FigureCanvasTkAgg(fig, parent)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill='both', expand=True)
+        db.close()
 
 if __name__ == "__main__":
     root = tk.Tk()
